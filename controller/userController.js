@@ -10,10 +10,13 @@ const { v4: uuidv4 } = require('uuid');
 
 exports.addUser = async (req, res) => {
   console.log(`Inside add files function`);
-  const { CoordinateTable } = req.body;
+  const { CoordinateTable} = req.body;
+  const{ObjectTable} =req.body;
+  console.log(ObjectTable)
 
   // Parse the CoordinateTable string into a JavaScript object
   const coordinateTable = JSON.parse(req.body.CoordinateTable);
+  const objectTable = JSON.parse(req.body.ObjectTable);
 
   // Store uploaded filenames as a comma-separated string
   const filesLoaded = req.files.map(file => file.filename).join(',');
@@ -39,10 +42,29 @@ exports.addUser = async (req, res) => {
                   }
               });
           });
+            // Insert data into the BoundingBoxTable
+            objectTable.forEach(coordinate => {
+              const { fileid, objectName,offset,maxbbobject,minbbobject } = coordinate;
+              const { x, y, z } = offset;              
+              
+              const bbmaX = maxbbobject.x
+              const bbmaY = maxbbobject.y
+              const bbmaZ = maxbbobject.z
+              const bbmiX = minbbobject.x
+              const bbmiY = minbbobject.y
+              const bbmiZ = minbbobject.z
+              db.run("INSERT INTO FileBoundingTable (fileid, fileName, coOrdinateX, coOrdinateY, coOrdinateZ,maxbbX , maxbbY ,maxbbZ ,minbbX ,minbbY ,minbbZ ) VALUES (?, ?, ?, ?, ?,?,?,?,?,?,?)", [fileid, objectName, x, y, z,bbmaX,bbmaY,bbmaZ,bbmiX,bbmiY,bbmiZ], function(err) {
+                  if (err) {
+                      console.error(err.message);
+                      return res.status(500).json({ error: 'Internal Server Error' });
+                  }
+              });
+          });
 
           // Return a success response
           res.status(200).json("Files uploaded successfully");
       });
+      
 
   } catch (error) {
       console.error("Error adding user:", error);
@@ -185,13 +207,13 @@ exports.createAsset = async(req,res)=>{
 }
 
 
-// get object table
+// get mesh table
 exports.getuser = async (req,res)=>{
     console.log("inside get function");
 
     try {
         // Perform a SELECT query
-db.all("SELECT * FROM BoundingBoxTable", (err, rows) => {
+db.all("SELECT * FROM BoundingboxTable", (err, rows) => {
     if (err) {
         console.error(err.message);
         return;
@@ -209,6 +231,29 @@ db.all("SELECT * FROM BoundingBoxTable", (err, rows) => {
     
 }
 
+// get object table
+exports.getobjectTable = async (req,res)=>{
+  console.log("inside get function");
+
+  try {
+      // Perform a SELECT query
+db.all("SELECT * FROM FileBoundingTable", (err, rows) => {
+  if (err) {
+      console.error(err.message);
+      return;
+  }
+  // Print the retrieved data
+  rows.forEach(row => {
+      console.log(row);
+  });
+  res.status(200).json(rows)
+})
+      
+  } catch (error) {
+     res.status(400).json(error) 
+  }
+  
+}
 
 // single user
 exports.getsingleuser = async(req,res)=>{

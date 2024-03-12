@@ -10,10 +10,17 @@ router.post('/add',multerConfig,userController.addUser)
 // create asset
 router.post('/createasset',userController.createAsset)
 
-
-
 // get user
 router.get('/getall',userController.getuser)
+
+// get object yable
+router.get('/getallobject',userController.getobjectTable)
+
+
+
+
+
+
 // edit user
 router.put('/edit',userController.editdata)
 // get single user

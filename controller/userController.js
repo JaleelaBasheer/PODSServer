@@ -5,6 +5,7 @@ const fs = require('fs');
 const request = require('request-promise');
 const path = require('path');
 const { v4: uuidv4 } = require('uuid');
+const sqlite3 = require('sqlite3').verbose();
 
 // add new  files
 
@@ -218,10 +219,10 @@ db.all("SELECT * FROM BoundingboxTable", (err, rows) => {
         console.error(err.message);
         return;
     }
-    // Print the retrieved data
-    rows.forEach(row => {
-        console.log(row);
-    });
+    // // Print the retrieved data
+    // rows.forEach(row => {
+    //     console.log(row);
+    // });
     res.status(200).json(rows)
 })
         
@@ -243,9 +244,9 @@ db.all("SELECT * FROM FileBoundingTable", (err, rows) => {
       return;
   }
   // Print the retrieved data
-  rows.forEach(row => {
-      console.log(row);
-  });
+  // rows.forEach(row => {
+  //     console.log(row);
+  // });
   res.status(200).json(rows)
 })
       
@@ -255,12 +256,145 @@ db.all("SELECT * FROM FileBoundingTable", (err, rows) => {
   
 }
 
+// get all files loaded
+exports.getFBXFiles = async (req, res) => {
+  try {
+      // Define the path to your upload folder
+      const uploadFolder = './uploads'; // Update with your actual path
+
+      // Read the files in the upload folder
+      fs.readdir(uploadFolder, (err, files) => {
+          if (err) {
+              console.error('Error reading directory:', err);
+              return res.status(500).json({ error: 'Internal Server Error' });
+          }
+
+          // Filter only FBX files
+          const fbxFiles = files.filter(file => file.endsWith('.fbx'));
+          // console.log(fbxFiles)
+
+          // Serve the list of FBX files to the client
+          res.status(200).json(fbxFiles);
+      });
+  } catch (error) {
+      console.error('Error serving FBX files:', error);
+      res.status(500).json({ error: 'Internal Server Error' });
+  }
+};
+
+// add comments
+exports.addComment = async(req,res)=>{
+  console.log(`Inside add comment function`);
+  const { fileid,filename,coordinateX,coordinateY,coordinateZ,comment} = req.body;
+  console.log(req.body);
+  try {
+    console.log("Add new comment");
+    // Insert data into the fileDetails table
+    db.run("INSERT INTO CommentTable (fileid,fileName,coordinateX,coordinateY,coordinateZ,comment) VALUES (?, ?,?,?,?,?)", [fileid,filename,coordinateX,coordinateY,coordinateZ,comment], function(err) {
+        if (err) {
+            console.error(err.message);
+            return res.status(500).json({ error: 'Internal Server Error' });
+        }    
+       // Return a success response
+        res.status(200).json("New comment uploaded successfully");
+    });
+    
+
+} catch (error) {
+    console.error("Error adding user:", error);
+    res.status(400).json({ error: 'Bad Request' });
+}
+  
+}
+
+// get all comments
+exports.getallcomments =async(req,res)=>{
+  console.log("inside get all function function");
+
+  try {
+      // Perform a SELECT query
+db.all("SELECT * FROM commentTable", (err, rows) => {
+  if (err) {
+      console.error(err.message);
+      return;
+  }
+  // Print the retrieved data
+  // rows.forEach(row => {
+  //     console.log(row);
+  // });
+  res.status(200).json(rows)
+})
+      
+  } catch (error) {
+     res.status(400).json(error) 
+  }
+  
+}
+
+// all tables in database
+exports.showtables = async (req,res)=>{
+  console.log(`Inside show all table function`);
+  try {
+
+// Query to retrieve all table names
+const query = `SELECT name FROM sqlite_master WHERE type='table'`;
+
+// Execute the query
+db.all(query, [], (err, rows) => {
+    if (err) {
+        console.error(err.message);
+        return;
+    }
+    
+    // Extract and display table names
+    rows.forEach((row) => {
+        console.log(row.name);
+       
+    });
+    res.status(200).json(rows);
+});
+    
+  } catch (error) {
+    console.error("Error adding user:", error);
+    res.status(400).json({ error: 'Bad Request' });
+  }
+
+}
+
+// delete table from database
+exports.deletetable = async(req,res)=>{
+  console.log("inside delete function");
+  try {
+    // Table name to be deleted
+const tableName = 'FileBoundingTable';
+
+// SQL command to drop the table
+const query = `DROP TABLE IF EXISTS ${tableName}`;
+
+// Execute the query
+db.run(query, [], function(err) {
+    if (err) {
+        console.error(err.message);
+        return;
+    }
+    console.log(`Table ${tableName} has been deleted.`);
+    res.status(200).json(`Table ${tableName} has been deleted.`)
+});
+    
+  } catch (error) {
+    console.error("Error adding user:", error);
+    res.status(400).json({ error: 'Bad Request' });
+  }
+}
+
+
+
 // single user
 exports.getsingleuser = async(req,res)=>{
     const {id} = req.body
     console.log("Get inside single user");
     try {
-        db.get("SELECT * FROM users WHERE id = ?", [id], (err, row) => {
+        db.get("SELECT * FROM commentTable WHERE id = ?", [id], (err, row) => {
             if (err) {
                 console.error(err.message);
                 return res.status(500).json({ error: 'Internal Server Error' });

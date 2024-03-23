@@ -5,19 +5,31 @@ const multerConfig = require('../middleware/multerMiddleware')
 
 
 // add file
-router.post('/add',multerConfig,userController.addUser)
+router.post('/add',multerConfig,userController.addUser);
 
 // create asset
-router.post('/createasset',userController.createAsset)
+router.post('/createasset',userController.createAsset);
 
 // get user
-router.get('/getall',userController.getuser)
+router.get('/getall',userController.getuser);
 
-// get object yable
-router.get('/getallobject',userController.getobjectTable)
+// get object table
+router.get('/getallobject',userController.getobjectTable);
 
+// get all fbx files
+router.get('/getallfbxfiles',multerConfig,userController.getFBXFiles);
 
+// add new comment
+router.post('/addcomment',userController.addComment);
 
+// get all comment
+router.get('/getcomment',userController.getallcomments);
+
+// show all table
+router.get('/alltable',userController.showtables);
+
+// delete table
+router.delete('/deletetable',userController.deletetable);
 
 
 

@@ -31,8 +31,16 @@ router.get('/alltable',userController.showtables);
 // delete table
 router.delete('/deletetable',userController.deletetable);
 
+// open new project
+router.post('/opennewproject', userController.opennewproject);
+
+// getallproject
+router.get ('/getallprojects',userController.getallprojectsss);
 
 
+
+
+// -------------------------------------------------//
 // edit user
 router.put('/edit',userController.editdata)
 // get single user

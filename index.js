@@ -2,8 +2,6 @@ const express = require('express')
 const cors = require('cors');
 require('./db/connection')
 const router = require('./router/router')
-
-
 // Create an express application
 const Server = express()
 
@@ -12,8 +10,6 @@ Server.use(express.json())
 Server.use(cors());
 
 Server.use(express.urlencoded({ extended: true })); // Parse URL-encoded bodies
-
-
 
 Server.use('/uploads',express.static("./uploads"))
 Server.use(router)

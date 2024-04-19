@@ -285,19 +285,30 @@ exports.getFBXFiles = async (req, res) => {
 // add comments
 exports.addComment = async(req,res)=>{
   console.log(`Inside add comment function`);
-  const { fileid,filename,coordinateX,coordinateY,coordinateZ,comment} = req.body;
+  const { fileid,filename,comment,status,priority,coordinateX,coordinateY,coordinateZ} = req.body;
+  const createdby="jpo@poulconsul"
+  const createddate = new Date().toISOString();
   console.log(req.body);
   try {
     console.log("Add new comment");
+    db.get("SELECT MAX(number) AS max_number FROM CommentTable", function(err, row) {
+      if (err) {
+          console.error(err.message);
+          return res.status(500).json({ error: 'Internal Server Error' });
+      }
+      
+      // Calculate the new number by incrementing the maximum number by 1
+      const number = parseInt(row.max_number) + 1 || 1;
     // Insert data into the fileDetails table
-    db.run("INSERT INTO CommentTable (fileid,fileName,coordinateX,coordinateY,coordinateZ,comment) VALUES (?, ?,?,?,?,?)", [fileid,filename,coordinateX,coordinateY,coordinateZ,comment], function(err) {
-        if (err) {
+    db.run("INSERT INTO CommentTable (fileid, fileName, number, comment, status, priority, createdby, createddate, coOrdinateX, coOrdinateY, coOrdinateZ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", [fileid, filename, number, comment, status, priority, createdby, createddate, coordinateX, coordinateY, coordinateZ], function(err) {        
+      if (err) {
             console.error(err.message);
             return res.status(500).json({ error: 'Internal Server Error' });
         }    
        // Return a success response
         res.status(200).json("New comment uploaded successfully");
     });
+  });
     
 
 } catch (error) {
@@ -366,7 +377,7 @@ exports.deletetable = async(req,res)=>{
   console.log("inside delete function");
   try {
     // Table name to be deleted
-const tableName = 'FileBoundingTable';
+const tableName = 'CommentTable';
 
 // SQL command to drop the table
 const query = `DROP TABLE IF EXISTS ${tableName}`;
@@ -388,7 +399,139 @@ db.run(query, [], function(err) {
 }
 
 
+// Function to create a new folder
+const createFolder = (folderPath) => {
+  return new Promise((resolve, reject) => {
+    fs.mkdir(folderPath, { recursive: true }, (err) => {
+      if (err) {
+        reject(err);
+      } else {
+        resolve();
+      }
+    });
+  });
+};
 
+/// Function to create the database file and table
+const createDatabaseFile = (dbPath, projectId) => {
+  return new Promise((resolve, reject) => {
+    const db = new sqlite3.Database(dbPath, (err) => {
+      if (err) {
+        reject(err);
+      } else {
+        console.log(`Database file created at ${dbPath}`);
+        // Create table for the project
+        const sql = `CREATE TABLE IF NOT EXISTS projects (
+                      id INTEGER PRIMARY KEY AUTOINCREMENT,
+                      projectId TEXT,
+                      projectName TEXT,
+                      projectDescription TEXT
+                    )`;
+        db.run(sql, (err) => {
+          if (err) {
+            reject(err);
+          } else {
+            console.log(`Table created for projects`);
+            resolve(db);
+          }
+        });
+      }
+    });
+  });
+};
+
+// Function to save project details to the database
+const saveProjectDetails = (db, projectId, projectName, projectDescription) => {
+  return new Promise((resolve, reject) => {
+    const sql = `INSERT INTO projects (projectId, projectName, projectDescription) VALUES (?, ?, ?)`;
+    db.run(sql, [projectId, projectName, projectDescription], (err) => {
+      if (err) {
+        reject(err);
+      } else {
+        console.log(`Project details saved to database`);
+        resolve();
+      }
+    });
+  });
+  
+};
+
+exports.opennewproject = async (req, res) => {
+  try {
+    const { projectId, projectName, projectDescription } = req.body;
+
+    // Check if project name is provided
+    if (!projectName) {
+      return res.status(400).json({ error: 'Project name is required' });
+    }
+
+    // Create folder path for the project on desktop
+    const desktopPath = require('os').homedir() + '/Desktop';
+    const projectFolderPath = path.join(desktopPath, projectName);
+
+    // Create the project folder on desktop
+    await createFolder(projectFolderPath);
+
+
+    // Assuming your database file is named 'database.db'
+    const dbPath = path.join(projectFolderPath, 'database.db');
+
+    // Check if the database file exists
+    if (!fs.existsSync(dbPath)) {
+      // If database file doesn't exist, create it
+      await createDatabaseFile(dbPath);
+    }
+
+    // Save project details to the database
+    const db = new sqlite3.Database(dbPath);
+    await saveProjectDetails(db, projectId, projectName, projectDescription);
+
+    db.run("INSERT INTO projects (projectId, projectName,projectDescription) VALUES (?, ?,?)", [projectId, projectName,projectDescription], function(err) {
+      if (err) {
+          console.error(err.message);
+          return res.status(500).json({ error: 'Internal Server Error' });
+      }
+    
+
+      // Return a success response
+      res.json({ dbPath,db, projectId, projectName, projectDescription });
+
+  });
+  
+
+} catch (error) {
+  console.error('Error creating new project:', error);
+    res.status(500).json({ error: 'Bad request' });
+}
+};
+
+
+// get all projects
+exports.getallprojectsss = async (req, res) => {
+  console.log("all projects")
+  try {
+    // Perform a SELECT query
+db.all("SELECT * FROM projects", (err, rows) => {
+if (err) {
+    console.error(err.message);
+    return;
+}
+// Print the retrieved data
+rows.forEach(row => {
+    console.log(row);
+});
+res.status(200).json(rows)
+})
+    
+} catch (error) {
+   res.status(400).json(error) 
+}
+};
+
+
+
+
+// -----------------------------------------------------------------------//
 // single user
 exports.getsingleuser = async(req,res)=>{
     const {id} = req.body

@@ -12,6 +12,7 @@ Server.use(cors());
 Server.use(express.urlencoded({ extended: true })); // Parse URL-encoded bodies
 
 Server.use('/uploads',express.static("./uploads"))
+
 Server.use(router)
 
 // Setup port number to listen server

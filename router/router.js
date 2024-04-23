@@ -1,7 +1,8 @@
-const express = require('express')
-const userController = require('../controller/userController')
-const router = new express.Router()
-const multerConfig = require('../middleware/multerMiddleware')
+const express = require('express');
+const userController = require('../controller/userController');
+const router = new express.Router();
+const multerConfig = require('../middleware/multerMiddleware');
+const tagMulter = require('../middleware/tagMiddleware');
 
 
 // add file
@@ -37,7 +38,20 @@ router.post('/opennewproject', userController.opennewproject);
 // getallproject
 router.get ('/getallprojects',userController.getallprojectsss);
 
+// add area
+router.post ('/addarea',userController.addarea);
 
+// add discipline 
+router.post ('/adddisc',userController.adddiscipline);
+
+// add system
+router.post ('/addsys',userController.addsystem);
+
+// tag registration
+router.post ('/registernewtag',tagMulter.single('fileLoaded'),userController.registerNewTag);
+
+// get all area
+router.get ('/getallarea',userController.getallarea);
 
 
 // -------------------------------------------------//

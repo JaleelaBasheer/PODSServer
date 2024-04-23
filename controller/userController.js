@@ -377,7 +377,7 @@ exports.deletetable = async(req,res)=>{
   console.log("inside delete function");
   try {
     // Table name to be deleted
-const tableName = 'CommentTable';
+const tableName = 'Tags';
 
 // SQL command to drop the table
 const query = `DROP TABLE IF EXISTS ${tableName}`;
@@ -413,26 +413,85 @@ const createFolder = (folderPath) => {
 };
 
 /// Function to create the database file and table
-const createDatabaseFile = (dbPath, projectId) => {
+const createDatabaseFile = (dbPath) => {
   return new Promise((resolve, reject) => {
     const db = new sqlite3.Database(dbPath, (err) => {
       if (err) {
         reject(err);
       } else {
         console.log(`Database file created at ${dbPath}`);
-        // Create table for the project
-        const sql = `CREATE TABLE IF NOT EXISTS projects (
-                      id INTEGER PRIMARY KEY AUTOINCREMENT,
-                      projectId TEXT,
-                      projectName TEXT,
-                      projectDescription TEXT
-                    )`;
-        db.run(sql, (err) => {
-          if (err) {
-            reject(err);
+        // Drop existing tables if they exist
+        db.run("DROP TABLE IF EXISTS projects", (dropProjectsErr) => {
+          if (dropProjectsErr) {
+            reject(dropProjectsErr);
           } else {
-            console.log(`Table created for projects`);
-            resolve(db);
+            // Create table for the projects
+            const projectSql = `CREATE TABLE IF NOT EXISTS projects (
+                                 id INTEGER PRIMARY KEY AUTOINCREMENT,
+                                 projectId TEXT,
+                                 projectNo TEXT,
+                                 projectName TEXT,
+                                 projectDescription TEXT
+                               )`;
+
+            // Create table for the Tree
+            const treeSql = `CREATE TABLE IF NOT EXISTS Tree (
+                               area TEXT,
+                               disc TEXT,
+                               sys TEXT,
+                               tag TEXT,
+                               name TEXT,
+                               PRIMARY KEY(area, disc, sys, tag)
+                             )`;
+
+            // Create table for UnassignedModels
+            const unassignedModelsSql = `CREATE TABLE IF NOT EXISTS UnassignedModels (
+                                           number TEXT,
+                                           filename TEXT,
+                                           PRIMARY KEY(number)
+                                         )`;
+
+            // Create table for Tags
+            const tagsSql = `CREATE TABLE IF NOT EXISTS Tags (
+                               number TEXT,
+                               name TEXT,
+                               type TEXT,
+                               filename TEXT,
+                               PRIMARY KEY(number)
+                             )`;
+
+            // Run all SQL queries in sequence
+            db.serialize(() => {
+              db.run(projectSql, (createProjectErr) => {
+                if (createProjectErr) {
+                  reject(createProjectErr);
+                } else {
+                  console.log(`Table created for projects`);
+                  db.run(treeSql, (createTreeErr) => {
+                    if (createTreeErr) {
+                      reject(createTreeErr);
+                    } else {
+                      console.log(`Table created for Tree`);
+                      db.run(unassignedModelsSql, (createUnassignedModelsErr) => {
+                        if (createUnassignedModelsErr) {
+                          reject(createUnassignedModelsErr);
+                        } else {
+                          console.log(`Table created for UnassignedModels`);
+                          db.run(tagsSql, (createTagsErr) => {
+                            if (createTagsErr) {
+                              reject(createTagsErr);
+                            } else {
+                              console.log(`Table created for Tags`);
+                              resolve(db);
+                            }
+                          });
+                        }
+                      });
+                    }
+                  });
+                }
+              });
+            });
           }
         });
       }
@@ -440,11 +499,12 @@ const createDatabaseFile = (dbPath, projectId) => {
   });
 };
 
+
 // Function to save project details to the database
-const saveProjectDetails = (db, projectId, projectName, projectDescription) => {
+const saveProjectDetails = (dbproject, projectId,projectNo, projectName, projectDescription) => {
   return new Promise((resolve, reject) => {
-    const sql = `INSERT INTO projects (projectId, projectName, projectDescription) VALUES (?, ?, ?)`;
-    db.run(sql, [projectId, projectName, projectDescription], (err) => {
+    const sql = `INSERT INTO projects (projectId,projectNo, projectName, projectDescription) VALUES (?, ?, ?,?)`;
+    dbproject.run(sql, [projectId,projectNo, projectName, projectDescription], (err) => {
       if (err) {
         reject(err);
       } else {
@@ -453,13 +513,50 @@ const saveProjectDetails = (db, projectId, projectName, projectDescription) => {
       }
     });
   });
-  
+ 
+};
+// Function to save area details to the database
+const saveAreaDetails = (db, area, name) => {
+  return new Promise((resolve, reject) => {
+    const sql = `INSERT INTO Tree (area, name) VALUES (?, ?)`;
+    db.run(sql, [area, name], (err) => {
+      if (err) {
+        reject(err);
+      } else {
+        console.log(`Area details saved to database`);
+        resolve();
+      }
+    });
+  });
 };
 
-exports.opennewproject = async (req, res) => {
+const saveProjectDetailstoServer=async(projectId,projectNo, projectName, projectDescription)=>{
+  console.log(projectId,projectNo, projectName, projectDescription)
   try {
-    const { projectId, projectName, projectDescription } = req.body;
+    console.log("Add new project");
+   
+    // Insert data into the fileDetails table
+    db.run("INSERT INTO projects (projectId,projectNo, projectname, projectdescription) VALUES (?, ?, ?,?)", [projectId,projectNo, projectName, projectDescription], function(err) {        
+      if (err) {
+            console.error(err.message);
+            // return res.status(500).json({ error: 'Internal Server Error' });
+        }    
+       // Return a success response
+       console.log("New project uploaded successfully");
+    });
+    
 
+} catch (error) {
+    console.error("Error adding user:", error);
+    res.status(400).json({ error: 'Bad Request' });
+}
+
+}
+
+exports.opennewproject = async (req, res) => {
+  console.log("create new project")
+  try {
+    const {projectId, projectNo, projectName, projectDescription } = req.body;
     // Check if project name is provided
     if (!projectName) {
       return res.status(400).json({ error: 'Project name is required' });
@@ -476,27 +573,22 @@ exports.opennewproject = async (req, res) => {
     // Assuming your database file is named 'database.db'
     const dbPath = path.join(projectFolderPath, 'database.db');
 
+
     // Check if the database file exists
     if (!fs.existsSync(dbPath)) {
+      console.log("dbPath",dbPath)
       // If database file doesn't exist, create it
       await createDatabaseFile(dbPath);
     }
 
     // Save project details to the database
-    const db = new sqlite3.Database(dbPath);
-    await saveProjectDetails(db, projectId, projectName, projectDescription);
-
-    db.run("INSERT INTO projects (projectId, projectName,projectDescription) VALUES (?, ?,?)", [projectId, projectName,projectDescription], function(err) {
-      if (err) {
-          console.error(err.message);
-          return res.status(500).json({ error: 'Internal Server Error' });
-      }
-    
+    const dbproject = new sqlite3.Database(dbPath);
+    await saveProjectDetails(dbproject,projectId,projectNo, projectName, projectDescription);
+    await saveProjectDetailstoServer(projectId,projectNo, projectName, projectDescription);
 
       // Return a success response
-      res.json({ dbPath,db, projectId, projectName, projectDescription });
+      res.json({ dbPath, projectId, projectNo,projectName, projectDescription });
 
-  });
   
 
 } catch (error) {
@@ -505,13 +597,11 @@ exports.opennewproject = async (req, res) => {
 }
 };
 
-
 // get all projects
 exports.getallprojectsss = async (req, res) => {
-  console.log("all projects")
   try {
     // Perform a SELECT query
-db.all("SELECT * FROM projects", (err, rows) => {
+db.all("SELECT * FROM Tree", (err, rows) => {
 if (err) {
     console.error(err.message);
     return;
@@ -528,8 +618,134 @@ res.status(200).json(rows)
 }
 };
 
+// add area
+exports.addarea=async(req,res)=>{
+  const {code,name} = req.body
+    console.log("Add area");
+
+    try {
+      console.log("Add area");
+      
+      // Insert data into the fileDetails table
+      db.run("INSERT INTO Tree (area,name) VALUES (?, ?)", [code,name], function(err) {        
+        if (err) {
+              console.error(err.message);
+              return res.status(500).json({ error: 'Internal Server Error' });
+          }    
+         // Return a success response
+          res.status(200).json("Area added");
+      });
+      
+  
+  } catch (error) {
+      console.error("Error adding user:", error);
+      res.status(400).json({ error: 'Bad Request' });
+  }
+}
+
+// add discipline
+exports.adddiscipline=async(req,res)=>{
+  const {code,name} = req.body
+
+    try {
+      console.log("Add dis");
+      
+      // Insert data into the fileDetails table
+      db.run("INSERT INTO Tree (disc,name) VALUES (?, ?)", [code,name], function(err) {        
+        if (err) {
+              console.error(err.message);
+              return res.status(500).json({ error: 'Internal Server Error' });
+          }    
+         // Return a success response
+          res.status(200).json("Discipline added");
+      });
+      
+  
+  } catch (error) {
+      console.error("Error adding user:", error);
+      res.status(400).json({ error: 'Bad Request' });
+  }
+}
+
+// add system
+exports.addsystem=async(req,res)=>{
+  const {code,name} = req.body
+
+    try {
+      console.log("Add sys");
+      
+      // Insert data into the fileDetails table
+      db.run("INSERT INTO Tree (sys,name) VALUES (?, ?)", [code,name], function(err) {        
+        if (err) {
+              console.error(err.message);
+              return res.status(500).json({ error: 'Internal Server Error' });
+          }    
+         // Return a success response
+          res.status(200).json("System added");
+      });
+      
+  
+  } catch (error) {
+      console.error("Error adding user:", error);
+      res.status(400).json({ error: 'Bad Request' });
+  }
+}
+
+// new tag registration 
+exports.registerNewTag=async(req,res)=>{
+  const {tagNo,TagName,Type} = req.body
+  const filesLoaded = req.files
+    try {
+      console.log("register new tag");
+      
+      // Insert data into the fileDetails table
+      db.run("INSERT INTO Tags (number,name ,type ,filename ) VALUES (?, ?,?,?)", [tagNo,TagName,Type,req.file.filename], function(err) {        
+        if (err) {
+              console.error(err.message);
+              return res.status(500).json({ error: 'Internal Server Error' });
+          }    
+        // Fetch the inserted data
+      db.get("SELECT * FROM Tags WHERE number = ?", [tagNo], (selectErr, row) => {
+        if (selectErr) {
+          console.error(selectErr.message);
+          return res.status(500).json({ error: 'Internal Server Error' });
+        }
+
+        // Return the inserted data in the response
+        res.status(200).json(row);
+      });
+    });
+      
+  
+  } catch (error) {
+      console.error("Error adding user:", error);
+      res.status(400).json({ error: 'Bad Request' });
+  }
+}
 
 
+// get all area
+
+exports.getallarea = async (req, res) => {
+  try {
+    db.all("SELECT area, name FROM Tree", (err, rows) => {
+      if (err) {
+        console.error(err.message);
+        return res.status(500).json({ error: 'Internal Server Error' });
+      }
+      if (rows && rows.length > 0) {
+        console.log(rows);
+        res.status(200).json(rows);
+      } else {
+        console.log("No areas found");
+        res.status(404).json({ message: "No areas found" });
+      }
+    });
+  } catch (error) {
+    console.error("Error retrieving areas:", error);
+    res.status(400).json({ error: 'Bad Request' });
+  }
+};
 
 // -----------------------------------------------------------------------//
 // single user

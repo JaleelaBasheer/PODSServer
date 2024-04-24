@@ -53,6 +53,15 @@ router.post ('/registernewtag',tagMulter.single('fileLoaded'),userController.reg
 // get all area
 router.get ('/getallarea',userController.getallarea);
 
+// get all disc
+router.get ('/getalldisc',userController.getalldisc);
+
+// get all sys
+router.get ('/getallsys',userController.getallsys);
+
+// delete comment
+router.delete('/deletecomment/:number',userController.deleteCommentRow)
+
 
 // -------------------------------------------------//
 // edit user

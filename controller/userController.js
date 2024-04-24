@@ -377,7 +377,7 @@ exports.deletetable = async(req,res)=>{
   console.log("inside delete function");
   try {
     // Table name to be deleted
-const tableName = 'Tags';
+const tableName = 'Tree';
 
 // SQL command to drop the table
 const query = `DROP TABLE IF EXISTS ${tableName}`;
@@ -398,7 +398,31 @@ db.run(query, [], function(err) {
   }
 }
 
+// delete row from commentTable in database
+exports.deleteCommentRow = async (req, res) => {
+  console.log("inside deleteRow function");
+  try {
+    // Number of the row to be deleted
+    const rowNumber = req.params.number; // Assuming the row number is provided in the request params
 
+    // SQL command to delete the row
+    const query = `DELETE FROM commentTable WHERE number = ?`;
+
+    // Execute the query
+    db.run(query, [rowNumber], function(err) {
+      if (err) {
+        console.error(err.message);
+        res.status(500).json({ error: 'Internal Server Error' });
+        return;
+      }
+      console.log(`Row with number ${rowNumber} has been deleted from commentTable.`);
+      res.status(200).json(`Row with number ${rowNumber} has been deleted from commentTable.`);
+    });
+  } catch (error) {
+    console.error("Error deleting row:", error);
+    res.status(400).json({ error: 'Bad Request' });
+  }
+}
 // Function to create a new folder
 const createFolder = (folderPath) => {
   return new Promise((resolve, reject) => {
@@ -725,7 +749,6 @@ exports.registerNewTag=async(req,res)=>{
 
 
 // get all area
-
 exports.getallarea = async (req, res) => {
   try {
     db.all("SELECT area, name FROM Tree", (err, rows) => {
@@ -746,6 +769,51 @@ exports.getallarea = async (req, res) => {
     res.status(400).json({ error: 'Bad Request' });
   }
 };
+
+// get all disc
+exports.getalldisc = async (req, res) => {
+  try {
+    db.all("SELECT disc, name FROM Tree", (err, rows) => {
+      if (err) {
+        console.error(err.message);
+        return res.status(500).json({ error: 'Internal Server Error' });
+      }
+      if (rows && rows.length > 0) {
+        console.log(rows);
+        res.status(200).json(rows);
+      } else {
+        console.log("No disc found");
+        res.status(404).json({ message: "No disc found" });
+      }
+    });
+  } catch (error) {
+    console.error("Error retrieving disc:", error);
+    res.status(400).json({ error: 'Bad Request' });
+  }
+};
+
+// get all system
+exports.getallsys = async (req, res) => {
+  try {
+    db.all("SELECT sys, name FROM Tree", (err, rows) => {
+      if (err) {
+        console.error(err.message);
+        return res.status(500).json({ error: 'Internal Server Error' });
+      }
+      if (rows && rows.length > 0) {
+        console.log(rows);
+        res.status(200).json(rows);
+      } else {
+        console.log("No sys found");
+        res.status(404).json({ message: "No sys found" });
+      }
+    });
+  } catch (error) {
+    console.error("Error retrieving disc:", error);
+    res.status(400).json({ error: 'Bad Request' });
+  }
+};
+
 
 // -----------------------------------------------------------------------//
 // single user
